@@ -39,5 +39,13 @@ const studentSchema = new mongoose.Schema({
     ],
 }, { timestamps: true })
 
+studentSchema.set('toJSON', {
+    transform: function (doc, ret, opt) {
+        delete ret['password']
+        delete ret['__v']
+        return ret
+    }
+})
+
 const Student = mongoose.model('student', studentSchema)
 module.exports = Student

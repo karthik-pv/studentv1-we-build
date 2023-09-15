@@ -1,11 +1,12 @@
+const { default: mongoose } = require('mongoose')
 const Student = require('../models/Student')
-const studentJoi = require('../schema/studentJoi')
+const { studentEditJoi, studentRegisterJoi } = require('../schema/studentJoi')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 
 module.exports.register = async (req, res) => {
     try {
-        const { usn, email, phone, name, sem, branch, section, password, mainSubjects, electiveSubjects } = await studentJoi.validateAsync(req.body)
+        const { usn, email, phone, name, sem, branch, section, password, mainSubjects, electiveSubjects } = await studentRegisterJoi.validateAsync(req.body)
 
         // check if student already exsist
         const savedStudent = await Student.findOne({ usn })
@@ -25,14 +26,14 @@ module.exports.register = async (req, res) => {
 
         // save student to database
         await student.save()
-        res.status(200).json({ message: 'ok' })
+        res.status(201).json({ message: 'ok' })
     } catch (error) {
 
         // sending joi validation error messages
         const { details } = error
         if (details) {
             for (errMsg of details) {
-                res.status(400).json({
+                return res.status(400).json({
                     message: errMsg.message
                 })
             }
@@ -68,7 +69,7 @@ module.exports.login = async (req, res) => {
                 const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY })
 
                 // sending token
-                res.status(200).json({ token })
+                res.status(201).json({ token })
             } else {
 
                 // wrong password
@@ -78,6 +79,124 @@ module.exports.login = async (req, res) => {
             }
         }
 
+    } catch (error) {
+
+        // server error
+        res.status(500).json({
+            message: 'Somthing went wrong'
+        })
+        console.log(error)
+    }
+}
+
+module.exports.edit = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { usn, email, phone, name, sem, branch, section, password, mainSubjects, electiveSubjects } = await studentEditJoi.validateAsync(req.body)
+
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({
+                message: 'Invalid ObjectId'
+            })
+        }
+
+        const updatedStudent = await Student.findByIdAndUpdate(id, { usn, email, phone, name, sem, branch, section, password, mainSubjects, electiveSubjects }, { new: true })
+
+        res.status(200).json({
+            message: 'ok'
+        })
+    } catch (error) {
+
+        // sending joi validation error messages
+        const { details } = error
+        if (details) {
+            for (errMsg of details) {
+                return res.status(400).json({
+                    message: errMsg.message
+                })
+            }
+        }
+
+        // server error
+        res.status(500).json({
+            message: 'Somthing went wrong'
+        })
+        console.log(error)
+    }
+}
+
+module.exports.remove = async (req, res) => {
+    try {
+        const { id } = req.params
+
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({
+                message: 'Invalid ObjectId'
+            })
+        }
+
+        const deletedStudent = await Student.findByIdAndDelete(id)
+
+        if (deletedStudent === null) {
+            return res.status(404).json({
+                message: `Student with id ${id} not found.`
+            })
+        }
+
+        res.status(200).json({
+            message: 'ok'
+        })
+    } catch (error) {
+
+        // server error
+        res.status(500).json({
+            message: 'Somthing went wrong'
+        })
+        console.log(error)
+    }
+}
+
+module.exports.info = async (req, res) => {
+    try {
+        const { id } = req.params
+
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({
+                message: 'Invalid ObjectId'
+            })
+        }
+
+        const student = await Student.findOne({ _id: id })
+
+        if (student === null) {
+            return res.status(404).json({
+                message: `Student with id ${id} not found.`
+            })
+        }
+
+        res.status(200).json(student)
+    } catch (error) {
+
+        // server error
+        res.status(500).json({
+            message: 'Somthing went wrong'
+        })
+        console.log(error)
+    }
+}
+
+module.exports.students = async (req, res) => {
+    try {
+
+        const students = await Student.find()
+
+        if (students.length === 0) {
+            return res.status(404).json({
+                message: `No Student found.`
+            })
+        }
+
+        res.status(200).json(students)
     } catch (error) {
 
         // server error
